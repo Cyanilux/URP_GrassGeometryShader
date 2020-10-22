@@ -82,6 +82,7 @@ float _Width;
 float _RandomWidth;
 float _Height;
 float _RandomHeight;
+float _WindStrength;
 float _TessellationUniform; // Used in CustomTesellation.hlsl
 CBUFFER_END
 
@@ -185,9 +186,19 @@ void geom(uint primitiveID : SV_PrimitiveID, triangle Varyings input[3], inout T
 	float r = rand(positionWS.xyz);
 	float3x3 randRotation = AngleAxis3x3(r * TWO_PI, float3(0,0,1));
 
-	// Wind (based on sin / cos, aka a circular motion, but strength of 0.1 * sine)
-	float2 wind = float2(sin(_Time.y + positionWS.x * 0.5), cos(_Time.y + positionWS.z * 0.5)) * 0.1 * sin(_Time.y + r);
-	float3x3 windMatrix = AngleAxis3x3((wind * PI).y, normalize(float3(wind.x,wind.y,0)));
+	float3x3 windMatrix;
+	if (_WindStrength != 0){
+		// Wind (based on sin / cos, aka a circular motion, but strength of 0.1 * sine)
+		// Could likely be simplified - this was mainly just trial and error to get something that looked nice.
+		float2 wind = float2(sin(_Time.y + positionWS.x * 0.5), cos(_Time.y + positionWS.z * 0.5)) * _WindStrength * sin(_Time.y + r) * float2(0.5, 1);
+		windMatrix = AngleAxis3x3((wind * PI).y, normalize(float3(wind.x, wind.x, wind.y)));
+	} else {
+		windMatrix = float3x3(1,0,0,0,1,0,0,0,1);
+	}
+
+	// -----------------------
+	// Bending, Width & Height
+	// -----------------------
 
 	float3x3 transformMatrix = mul(tangentToLocal, randRotation);
 	float3x3 transformMatrixWithWind = mul(mul(tangentToLocal, windMatrix), randRotation);
@@ -196,12 +207,13 @@ void geom(uint primitiveID : SV_PrimitiveID, triangle Varyings input[3], inout T
 	float width = _Width + _RandomWidth * (rand(positionWS.zyx) - 0.5);
 	float height = _Height + _RandomHeight * (rand(positionWS.yxz) - 0.5);
 
-	float3 normalWS = mul(transformMatrix, float3(0, -1, 0));
-	output.normalWS = normalWS;
-
 	// -----------------------
 	// Handle Geometry
 	// -----------------------
+
+	// Normals for all grass blade vertices is the same
+	float3 normalWS = mul(transformMatrix, float3(0, -1, 0));
+	output.normalWS = normalWS;
 
 	// Base 2 vertices
 	output.positionWS = positionWS + mul(transformMatrix, float3(width, 0, 0));
