@@ -117,7 +117,7 @@ void geom(uint primitiveID : SV_PrimitiveID, triangle Varyings input[3], inout T
 	// (blades closer to camera have more detail, should only really be used for first person camera)
 
 	float3 cameraPos = _WorldSpaceCameraPos;
-	float3 positionWS = input[0].positionWS;
+	float3 positionWS = input[1].positionWS; // switched to index 1 as it works better for the plane mesh
 	
 	#ifdef DISTANCE_DETAIL
 		float3 vtcam = cameraPos - positionWS;
