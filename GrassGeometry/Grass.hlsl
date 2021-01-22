@@ -11,18 +11,18 @@ struct Attributes {
 };
 
 struct Varyings {
-	float4 positionOS   : SV_POSITION;
+	//float4 positionOS   : SV_POSITION;
 	float3 positionWS	: TEXCOORD1;
 	float3 positionVS	: TEXCOORD2;
-	float3 normal		: NORMAL;
-	float4 tangent		: TANGENT;
+	float3 normal		: TEXCOORD3;
+	float4 tangent		: TEXCOORD4;
 	float2 texcoord		: TEXCOORD0;
 };
 
 struct GeometryOutput {
 	float4 positionCS	: SV_POSITION;
 	float3 positionWS	: TEXCOORD1;
-	float3 normalWS		: NORMAL;
+	float3 normalWS		: TEXCOORD3;
 	float2 uv			: TEXCOORD0;
 	float bladeSegments : TEXCOORD2;
 };
@@ -95,11 +95,17 @@ Varyings vert (Attributes input) {
 	// Seems like GetVertexPositionInputs doesn't work with SRP Batcher inside geom function?
 	// Had to move it here, in order to obtain positionWS and pass it through the Varyings output.
 
-	output.positionOS = input.positionOS; //vertexInput.positionCS;
+	// output.positionOS = input.positionOS;
+	// object space / model matrix doesn't seem to work in geom shader? Using world instead.
 	output.positionWS = vertexInput.positionWS;
 	output.positionVS = vertexInput.positionVS;
-	output.normal = input.normal;
+
+	output.normal = TransformObjectToWorldNormal(input.normal);
 	output.tangent = input.tangent;
+	// or maybe
+	// output.tangent = float4(TransformObjectToWorldNormal(input.tangent.xyz), input.tangent.w);
+	// doesn't seem to make much of a difference though
+
 	output.texcoord = input.texcoord;
 	return output;
 }
@@ -117,7 +123,7 @@ void geom(uint primitiveID : SV_PrimitiveID, triangle Varyings input[3], inout T
 	// (blades closer to camera have more detail, should only really be used for first person camera)
 
 	float3 cameraPos = _WorldSpaceCameraPos;
-	float3 positionWS = input[1].positionWS; // switched to index 1 as it works better for the plane mesh
+	float3 positionWS = input[1].positionWS;
 	
 	#ifdef DISTANCE_DETAIL
 		float3 vtcam = cameraPos - positionWS;
@@ -136,19 +142,19 @@ void geom(uint primitiveID : SV_PrimitiveID, triangle Varyings input[3], inout T
 	float v = 1 - saturate(bladeSegments);
 
 	output.positionWS = input[0].positionWS;
-	output.normalWS = TransformObjectToWorldNormal(input[0].normal);
+	output.normalWS = input[0].normal;
 	output.positionCS = WorldToHClip(output.positionWS, output.normalWS);
 	output.uv = float2(0, v);
 	triStream.Append(output);
 
 	output.positionWS = input[1].positionWS;
-	output.normalWS = TransformObjectToWorldNormal(input[1].normal);
+	output.normalWS = input[1].normal;
 	output.positionCS = WorldToHClip(output.positionWS, output.normalWS);
 	output.uv = float2(0, v);
 	triStream.Append(output);
 
 	output.positionWS = input[2].positionWS;
-	output.normalWS = TransformObjectToWorldNormal(input[2].normal);
+	output.normalWS = input[2].normal;
 	output.positionCS = WorldToHClip(output.positionWS, output.normalWS);
 	output.uv = float2(0, v);
 	triStream.Append(output);
@@ -199,6 +205,8 @@ void geom(uint primitiveID : SV_PrimitiveID, triangle Varyings input[3], inout T
 	// -----------------------
 	// Bending, Width & Height
 	// -----------------------
+	
+	//tangentToLocal = float3x3(1,0,0,0,1,0,0,0,1);
 
 	float3x3 transformMatrix = mul(tangentToLocal, randRotation);
 	float3x3 transformMatrixWithWind = mul(mul(tangentToLocal, windMatrix), randRotation);
