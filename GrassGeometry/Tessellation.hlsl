@@ -49,7 +49,7 @@ Varyings domain(TessellationFactors factors, OutputPatch<Varyings, 3> patch, flo
 
 	// These should match Varyings struct, in Grass.hlsl
 
-	MY_DOMAIN_PROGRAM_INTERPOLATE(positionOS)
+	//MY_DOMAIN_PROGRAM_INTERPOLATE(positionOS)
 	MY_DOMAIN_PROGRAM_INTERPOLATE(positionWS)
 	MY_DOMAIN_PROGRAM_INTERPOLATE(positionVS)
 	MY_DOMAIN_PROGRAM_INTERPOLATE(normal)
